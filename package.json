@@ -2,6 +2,7 @@
   "name": "pula-expense-tracker",
   "version": "1.0.0",
   "description": "Expense tracker mobile app for Botswana (Android & iOS)",
+  "author": "Joel Modongo Tshwene <joelmodongo@gmail.com>",
   "main": "index.js",
   "private": true,
   "scripts": {

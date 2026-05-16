@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Pula Expense Tracker",
+    "slug": "pula-expense-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "primaryColor": "#0F4C81",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F4C81"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pula.expensetracker",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.pula.expensetracker",
+      "versionCode": 1,
+      "permissions": [],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F4C81"
+      }
+    }
+  }
+}

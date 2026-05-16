@@ -1,0 +1,54 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [release/v1]
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the project
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate the native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build the release APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Collect the APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk pula-expense-tracker.apk
+
+      - name: Publish the APK as a downloadable release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-build
+          name: Pula Expense Tracker — test build
+          body: >
+            Installable Android test build. Signed with a debug key for
+            personal testing only — not for Google Play distribution.
+          prerelease: true
+          files: pula-expense-tracker.apk

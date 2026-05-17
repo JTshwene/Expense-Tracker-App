@@ -14,8 +14,8 @@ import { colors, spacing, radius } from '../theme';
 import { useExpenses } from '../context/ExpenseContext';
 import { formatCurrency } from '../utils/format';
 
-export default function SettingsScreen() {
-  const { budget, setBudget, expenses, clearData } = useExpenses();
+export default function SettingsScreen({ navigate }) {
+  const { budget, setBudget, expenses, categories, clearData } = useExpenses();
   const [budgetInput, setBudgetInput] = useState(budget ? String(budget) : '');
 
   const handleSaveBudget = () => {
@@ -82,6 +82,21 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.cardTitle}>Categories</Text>
+          <Text style={styles.cardHint}>
+            Edit the built-in categories or create your own to match how you spend.
+          </Text>
+          <TouchableOpacity
+            style={styles.navBtn}
+            onPress={() => navigate('categories')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.navBtnText}>Manage Categories ({categories.length})</Text>
+            <Text style={styles.navBtnArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
           <Text style={styles.cardTitle}>Your Data</Text>
           <View style={styles.statRow}>
             <Text style={styles.statLabel}>Expenses recorded</Text>
@@ -102,7 +117,7 @@ export default function SettingsScreen() {
             Pula Expense Tracker helps people in Botswana keep track of everyday spending in
             Botswana Pula (BWP). All data is stored privately on your own device.
           </Text>
-          <Text style={styles.version}>Version 1.0.0</Text>
+          <Text style={styles.version}>Version 1.1.0</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -154,6 +169,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 16,
+  },
+  navBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  navBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  navBtnArrow: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.primary,
   },
   currency: {
     fontSize: 22,

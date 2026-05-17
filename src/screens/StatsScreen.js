@@ -1,17 +1,27 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
 import { colors, spacing, radius } from '../theme';
-import { CATEGORIES } from '../constants';
+import { FALLBACK_CATEGORY } from '../constants';
 import { useExpenses } from '../context/ExpenseContext';
-import { isSameMonth, monthLabel, formatCurrency } from '../utils/format';
+import { isSameMonth, monthLabel, formatCurrency, addMonths } from '../utils/format';
+import Pie3D from '../components/Pie3D';
 
 export default function StatsScreen() {
-  const { expenses } = useExpenses();
+  const { expenses, categories } = useExpenses();
   const [scope, setScope] = useState('month'); // 'month' | 'all'
+  const [monthDate, setMonthDate] = useState(new Date());
+
+  const now = new Date();
+  const canGoNext =
+    monthDate.getFullYear() < now.getFullYear() ||
+    (monthDate.getFullYear() === now.getFullYear() && monthDate.getMonth() < now.getMonth());
 
   const filtered = useMemo(
-    () => (scope === 'month' ? expenses.filter((e) => isSameMonth(e.date)) : expenses),
-    [expenses, scope],
+    () =>
+      scope === 'all'
+        ? expenses
+        : expenses.filter((e) => isSameMonth(e.date, monthDate)),
+    [expenses, scope, monthDate],
   );
 
   const total = filtered.reduce((sum, e) => sum + e.amount, 0);
@@ -21,13 +31,19 @@ export default function StatsScreen() {
     filtered.forEach((e) => {
       totals[e.category] = (totals[e.category] || 0) + e.amount;
     });
-    return CATEGORIES.map((cat) => ({
-      ...cat,
-      amount: totals[cat.id] || 0,
-    }))
-      .filter((c) => c.amount > 0)
-      .sort((a, b) => b.amount - a.amount);
-  }, [filtered]);
+    const rows = categories
+      .map((c) => ({ ...c, amount: totals[c.id] || 0 }))
+      .filter((c) => c.amount > 0);
+    let unknown = 0;
+    Object.keys(totals).forEach((id) => {
+      if (!categories.some((c) => c.id === id)) unknown += totals[id];
+    });
+    if (unknown > 0) rows.push({ ...FALLBACK_CATEGORY, amount: unknown });
+    return rows.sort((a, b) => b.amount - a.amount);
+  }, [filtered, categories]);
+
+  const chartWidth = Math.min(320, Dimensions.get('window').width - 72);
+  const pieData = breakdown.map((c) => ({ value: c.amount, color: c.color, label: c.label }));
 
   return (
     <View style={styles.container}>
@@ -42,7 +58,7 @@ export default function StatsScreen() {
             activeOpacity={0.8}
           >
             <Text style={[styles.toggleText, scope === 'month' && styles.toggleTextActive]}>
-              This Month
+              Month
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -56,9 +72,30 @@ export default function StatsScreen() {
           </TouchableOpacity>
         </View>
 
+        {scope === 'month' && (
+          <View style={styles.stepper}>
+            <TouchableOpacity
+              style={styles.stepBtn}
+              activeOpacity={0.7}
+              onPress={() => setMonthDate(addMonths(monthDate, -1))}
+            >
+              <Text style={styles.stepArrow}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.stepLabel}>{monthLabel(monthDate)}</Text>
+            <TouchableOpacity
+              style={[styles.stepBtn, !canGoNext && styles.stepBtnDisabled]}
+              activeOpacity={0.7}
+              disabled={!canGoNext}
+              onPress={() => setMonthDate(addMonths(monthDate, 1))}
+            >
+              <Text style={[styles.stepArrow, !canGoNext && styles.stepArrowDisabled]}>›</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.totalCard}>
           <Text style={styles.totalLabel}>
-            {scope === 'month' ? `Total — ${monthLabel()}` : 'Total — All Time'}
+            {scope === 'month' ? `Total — ${monthLabel(monthDate)}` : 'Total — All Time'}
           </Text>
           <Text style={styles.totalAmount}>{formatCurrency(total)}</Text>
           <Text style={styles.totalCount}>
@@ -74,25 +111,26 @@ export default function StatsScreen() {
             <Text style={styles.emptyText}>No expenses recorded for this period.</Text>
           </View>
         ) : (
-          breakdown.map((cat) => {
-            const pct = total > 0 ? (cat.amount / total) * 100 : 0;
-            return (
-              <View key={cat.id} style={styles.catRow}>
-                <View style={styles.catHeader}>
-                  <Text style={styles.catName}>
+          <>
+            <View style={styles.chartWrap}>
+              <Pie3D data={pieData} width={chartWidth} />
+            </View>
+            {breakdown.map((cat) => {
+              const pct = total > 0 ? (cat.amount / total) * 100 : 0;
+              return (
+                <View key={cat.id} style={styles.legendRow}>
+                  <View style={[styles.dot, { backgroundColor: cat.color }]} />
+                  <Text style={styles.legendName} numberOfLines={1}>
                     {cat.icon}  {cat.label}
                   </Text>
-                  <Text style={styles.catAmount}>{formatCurrency(cat.amount)}</Text>
+                  <View style={styles.legendRight}>
+                    <Text style={styles.legendAmount}>{formatCurrency(cat.amount)}</Text>
+                    <Text style={styles.legendPct}>{pct.toFixed(1)}%</Text>
+                  </View>
                 </View>
-                <View style={styles.barTrack}>
-                  <View
-                    style={[styles.barFill, { width: `${pct}%`, backgroundColor: cat.color }]}
-                  />
-                </View>
-                <Text style={styles.catPct}>{pct.toFixed(1)}%</Text>
-              </View>
-            );
-          })
+              );
+            })}
+          </>
         )}
       </ScrollView>
     </View>
@@ -125,7 +163,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: 4,
-    marginBottom: spacing.md,
   },
   toggleBtn: {
     flex: 1,
@@ -144,10 +181,48 @@ const styles = StyleSheet.create({
   toggleTextActive: {
     color: '#FFFFFF',
   },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginTop: spacing.sm,
+  },
+  stepBtn: {
+    width: 44,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+    backgroundColor: colors.background,
+  },
+  stepBtnDisabled: {
+    opacity: 0.4,
+  },
+  stepArrow: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.primary,
+    marginTop: -2,
+  },
+  stepArrowDisabled: {
+    color: colors.muted,
+  },
+  stepLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.text,
+  },
   totalCard: {
     backgroundColor: colors.primary,
     borderRadius: radius.lg,
     padding: 20,
+    marginTop: spacing.md,
     marginBottom: spacing.lg,
   },
   totalLabel: {
@@ -172,42 +247,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: spacing.md,
   },
-  catRow: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: 14,
-    marginBottom: 10,
-  },
-  catHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  catName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  catAmount: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  barTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.background,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: 8,
-    borderRadius: 4,
-  },
-  catPct: {
-    fontSize: 12,
-    color: colors.muted,
-    marginTop: 6,
-    textAlign: 'right',
+  chartWrap: {
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   empty: {
     alignItems: 'center',
@@ -220,5 +262,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.muted,
     marginTop: 8,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    padding: 12,
+    marginBottom: 8,
+  },
+  dot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginRight: 10,
+  },
+  legendName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  legendRight: {
+    alignItems: 'flex-end',
+  },
+  legendAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  legendPct: {
+    fontSize: 12,
+    color: colors.muted,
+    marginTop: 2,
   },
 });

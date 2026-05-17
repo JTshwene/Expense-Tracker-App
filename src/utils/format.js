@@ -29,15 +29,6 @@ export function isSameMonth(value, ref = new Date()) {
   return d.getMonth() === ref.getMonth() && d.getFullYear() === ref.getFullYear();
 }
 
-export function todayISO() {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${m}-${day}`;
-}
-
-export function isValidDate(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const d = new Date(value);
-  return !isNaN(d.getTime());
+export function addMonths(ref, delta) {
+  return new Date(ref.getFullYear(), ref.getMonth() + delta, 1);
 }

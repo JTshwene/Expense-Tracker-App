@@ -9,24 +9,29 @@ import {
 } from 'react-native';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { ExpenseProvider, useExpenses } from './src/context/ExpenseContext';
+import { ToastProvider } from './src/context/ToastContext';
 import TabBar from './src/components/TabBar';
 import HomeScreen from './src/screens/HomeScreen';
 import AddExpenseScreen from './src/screens/AddExpenseScreen';
 import StatsScreen from './src/screens/StatsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import CategoriesScreen from './src/screens/CategoriesScreen';
 import { colors } from './src/theme';
 
 function Root() {
-  const [tab, setTab] = useState('home');
+  const [screen, setScreen] = useState('home');
   const { loading } = useExpenses();
 
-  const navigate = (target) => setTab(target);
+  const navigate = (target) => setScreen(target);
 
-  let screen;
-  if (tab === 'add') screen = <AddExpenseScreen navigate={navigate} />;
-  else if (tab === 'stats') screen = <StatsScreen navigate={navigate} />;
-  else if (tab === 'settings') screen = <SettingsScreen navigate={navigate} />;
-  else screen = <HomeScreen navigate={navigate} />;
+  let content;
+  if (screen === 'add') content = <AddExpenseScreen navigate={navigate} />;
+  else if (screen === 'stats') content = <StatsScreen navigate={navigate} />;
+  else if (screen === 'settings') content = <SettingsScreen navigate={navigate} />;
+  else if (screen === 'categories') content = <CategoriesScreen navigate={navigate} />;
+  else content = <HomeScreen navigate={navigate} />;
+
+  const activeTab = screen === 'categories' ? 'settings' : screen;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -37,10 +42,10 @@ function Root() {
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : (
-          screen
+          content
         )}
       </View>
-      <TabBar active={tab} onChange={setTab} />
+      <TabBar active={activeTab} onChange={navigate} />
     </SafeAreaView>
   );
 }
@@ -48,7 +53,9 @@ function Root() {
 export default function App() {
   return (
     <ExpenseProvider>
-      <Root />
+      <ToastProvider>
+        <Root />
+      </ToastProvider>
     </ExpenseProvider>
   );
 }

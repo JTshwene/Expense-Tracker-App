@@ -1,11 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { colors, radius } from '../theme';
-import { getCategory } from '../constants';
+import { useExpenses } from '../context/ExpenseContext';
 import { formatCurrency, formatDate } from '../utils/format';
 
 export default function ExpenseItem({ expense, onDelete }) {
-  const category = getCategory(expense.category);
+  const { getCategoryById } = useExpenses();
+  const category = getCategoryById(expense.category);
 
   const confirmDelete = () => {
     Alert.alert(

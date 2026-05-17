@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,23 +10,37 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, spacing, radius } from '../theme';
-import { CATEGORIES } from '../constants';
 import { useExpenses } from '../context/ExpenseContext';
-import { todayISO, isValidDate } from '../utils/format';
+import { useToast } from '../context/ToastContext';
+import { formatDate } from '../utils/format';
 
 export default function AddExpenseScreen({ navigate }) {
-  const { addExpense } = useExpenses();
+  const { addExpense, categories } = useExpenses();
+  const { showToast } = useToast();
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0].id);
+  const [category, setCategory] = useState(categories[0] ? categories[0].id : null);
   const [note, setNote] = useState('');
-  const [date, setDate] = useState(todayISO());
+  const [date, setDate] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
+
+  useEffect(() => {
+    if (categories.length && !categories.some((c) => c.id === category)) {
+      setCategory(categories[0].id);
+    }
+  }, [categories, category]);
 
   const reset = () => {
     setAmount('');
-    setCategory(CATEGORIES[0].id);
+    setCategory(categories[0] ? categories[0].id : null);
     setNote('');
-    setDate(todayISO());
+    setDate(new Date());
+  };
+
+  const onChangeDate = (event, selected) => {
+    setShowPicker(false);
+    if (event.type !== 'dismissed' && selected) setDate(selected);
   };
 
   const handleSave = () => {
@@ -35,15 +49,14 @@ export default function AddExpenseScreen({ navigate }) {
       Alert.alert('Invalid amount', 'Please enter an amount greater than zero.');
       return;
     }
-    if (!isValidDate(date)) {
-      Alert.alert('Invalid date', 'Please use the date format YYYY-MM-DD.');
+    if (!category) {
+      Alert.alert('No category', 'Please add a category first from the Categories screen.');
       return;
     }
-    addExpense({ amount: value, category, note, date });
+    addExpense({ amount: value, category, note, date: date.toISOString() });
     reset();
-    Alert.alert('Saved', 'Your expense has been recorded.', [
-      { text: 'OK', onPress: () => navigate('home') },
-    ]);
+    showToast('Expense saved');
+    navigate('home');
   };
 
   return (
@@ -73,37 +86,52 @@ export default function AddExpenseScreen({ navigate }) {
         </View>
 
         <Text style={styles.label}>Category</Text>
-        <View style={styles.categoryGrid}>
-          {CATEGORIES.map((cat) => {
-            const selected = cat.id === category;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.categoryChip,
-                  selected && { backgroundColor: cat.color, borderColor: cat.color },
-                ]}
-                activeOpacity={0.8}
-                onPress={() => setCategory(cat.id)}
-              >
-                <Text style={styles.categoryIcon}>{cat.icon}</Text>
-                <Text style={[styles.categoryText, selected && styles.categoryTextSelected]}>
-                  {cat.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {categories.length === 0 ? (
+          <Text style={styles.emptyHint}>
+            You have no categories. Add one from Settings → Manage Categories.
+          </Text>
+        ) : (
+          <View style={styles.categoryGrid}>
+            {categories.map((cat) => {
+              const selected = cat.id === category;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.categoryChip,
+                    selected && { backgroundColor: cat.color, borderColor: cat.color },
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => setCategory(cat.id)}
+                >
+                  <Text style={styles.categoryIcon}>{cat.icon}</Text>
+                  <Text style={[styles.categoryText, selected && styles.categoryTextSelected]}>
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         <Text style={styles.label}>Date</Text>
-        <TextInput
-          style={styles.input}
-          value={date}
-          onChangeText={setDate}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor={colors.muted}
-          autoCapitalize="none"
-        />
+        <TouchableOpacity
+          style={styles.dateField}
+          activeOpacity={0.8}
+          onPress={() => setShowPicker(true)}
+        >
+          <Text style={styles.dateText}>{formatDate(date)}</Text>
+          <Text style={styles.dateIcon}>📅</Text>
+        </TouchableOpacity>
+        {showPicker && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display="default"
+            maximumDate={new Date()}
+            onChange={onChangeDate}
+          />
+        )}
 
         <Text style={styles.label}>Note (optional)</Text>
         <TextInput
@@ -180,6 +208,30 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     color: colors.text,
+  },
+  dateField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  dateText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  dateIcon: {
+    fontSize: 16,
+  },
+  emptyHint: {
+    fontSize: 13,
+    color: colors.muted,
+    lineHeight: 18,
   },
   categoryGrid: {
     flexDirection: 'row',
